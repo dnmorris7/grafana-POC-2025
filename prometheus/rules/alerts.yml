@@ -1,0 +1,58 @@
+groups:
+  - name: rabbitmq.rules
+    rules:
+      - alert: RabbitMQDown
+        expr: up{job="rabbitmq"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "RabbitMQ instance is down"
+          description: "RabbitMQ instance {{ $labels.instance }} has been down for more than 5 minutes."
+
+      - alert: RabbitMQHighQueueDepth
+        expr: rabbitmq_queue_messages > 1000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High queue depth in RabbitMQ"
+          description: "Queue {{ $labels.queue }} has {{ $value }} messages waiting."
+
+      - alert: RabbitMQLowMessageRate
+        expr: rate(rabbitmq_queue_messages_published_total[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low message publication rate"
+          description: "Message publication rate is below 0.1/sec for queue {{ $labels.queue }}."
+
+  - name: llm.rules
+    rules:
+      - alert: LLMHighLatency
+        expr: llm_response_time_seconds > 30
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High LLM response latency"
+          description: "LLM response time is {{ $value }}s, exceeding 30s threshold."
+
+      - alert: LLMHighCost
+        expr: rate(llm_cost_usd_total[1h]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High LLM API costs"
+          description: "LLM API costs are ${{ $value }}/hour, exceeding $10/hour threshold."
+
+      - alert: LLMErrorRate
+        expr: rate(llm_requests_total{status="error"}[5m]) / rate(llm_requests_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High LLM error rate"
+          description: "LLM error rate is {{ $value | humanizePercentage }}, exceeding 10% threshold."
