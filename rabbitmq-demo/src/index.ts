@@ -1,4 +1,4 @@
-import * as amqp from 'amqplib';
+import amqplib from 'amqplib';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -13,18 +13,37 @@ const logger = winston.createLogger({
 });
 
 class RabbitMQDemo {
-  private connection: amqp.Connection | null = null;
-  private channel: amqp.Channel | null = null;
+  private connection: Awaited<ReturnType<typeof amqplib.connect>> | null = null;
+  private channel: Awaited<ReturnType<NonNullable<typeof this.connection>['createChannel']>> | null = null;
   private readonly rabbitmqUrl: string;
+  private readonly twitterConfig: {
+    apiKey: string;
+    apiSecret: string;
+    accessToken: string;
+    accessTokenSecret: string;
+    bearerToken: string;
+  };
 
   constructor() {
     this.rabbitmqUrl = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
+    this.twitterConfig = {
+      apiKey: process.env.TWITTER_API_KEY || '',
+      apiSecret: process.env.TWITTER_API_SECRET || '',
+      accessToken: process.env.TWITTER_ACCESS_TOKEN || '',
+      accessTokenSecret: process.env.TWITTER_ACCESS_TOKEN_SECRET || '',
+      bearerToken: process.env.TWITTER_BEARER_TOKEN || '',
+    };
+    
+    logger.info('RabbitMQ Demo initialized', {
+      rabbitmqUrl: this.rabbitmqUrl,
+      hasTwitterKeys: !!(this.twitterConfig.apiKey && this.twitterConfig.apiSecret)
+    });
   }
 
   async connect(): Promise<void> {
     try {
       logger.info('Connecting to RabbitMQ...');
-      this.connection = await amqp.connect(this.rabbitmqUrl);
+      this.connection = await amqplib.connect(this.rabbitmqUrl);
 
       // Create channel after connection
       if (!this.connection) {
@@ -113,7 +132,7 @@ class RabbitMQDemo {
     }
 
     // Order processing consumer
-    await this.channel.consume('orders.processing', (msg: amqp.ConsumeMessage | null) => {
+    await this.channel.consume('orders.processing', (msg: amqplib.ConsumeMessage | null) => {
       if (msg) {
         logger.info(`Processing order: ${msg.content.toString()}`);
         this.channel?.ack(msg);
@@ -128,7 +147,7 @@ class RabbitMQDemo {
     });
 
     // Email notification consumer
-    await this.channel.consume('notifications.email', (msg: amqp.ConsumeMessage | null) => {
+    await this.channel.consume('notifications.email', (msg: amqplib.ConsumeMessage | null) => {
       if (msg) {
         logger.info(`Sending email: ${msg.content.toString()}`);
         this.channel?.ack(msg);
@@ -136,7 +155,7 @@ class RabbitMQDemo {
     });
 
     // SMS notification consumer
-    await this.channel.consume('notifications.sms', (msg: amqp.ConsumeMessage | null) => {
+    await this.channel.consume('notifications.sms', (msg: amqplib.ConsumeMessage | null) => {
       if (msg) {
         logger.info(`Sending SMS: ${msg.content.toString()}`);
         this.channel?.ack(msg);
@@ -144,14 +163,14 @@ class RabbitMQDemo {
     });
 
     // Analytics consumers
-    await this.channel.consume('analytics.user-behavior', (msg: amqp.ConsumeMessage | null) => {
+    await this.channel.consume('analytics.user-behavior', (msg: amqplib.ConsumeMessage | null) => {
       if (msg) {
         logger.info(`Processing user analytics: ${msg.content.toString()}`);
         this.channel?.ack(msg);
       }
     });
 
-    await this.channel.consume('analytics.system-metrics', (msg: amqp.ConsumeMessage | null) => {
+    await this.channel.consume('analytics.system-metrics', (msg: amqplib.ConsumeMessage | null) => {
       if (msg) {
         logger.info(`Processing system metrics: ${msg.content.toString()}`);
         this.channel?.ack(msg);
@@ -212,7 +231,7 @@ class RabbitMQDemo {
   async close(): Promise<void> {
     try {
       await this.channel?.close();
-      await (this.connection as any)?.close();
+      await this.connection?.close();
       logger.info('RabbitMQ connection closed');
     } catch (error) {
       logger.error('Error closing connection:', error);
