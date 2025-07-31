@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { LLMMetricsCollector, LLMMetrics } from '../metrics/LLMMetricsCollector';
 import { DatabaseService } from './DatabaseService';
 import { logger } from '../utils/logger';
-import { config } from '../config';
+import { config } from '../config/index';
 
 export interface LLMCompletionRequest {
   prompt: string;

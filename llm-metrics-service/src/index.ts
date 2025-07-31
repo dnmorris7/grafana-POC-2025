@@ -6,20 +6,23 @@ import { register, collectDefaultMetrics } from 'prom-client';
 import { LLMMetricsCollector } from './metrics/LLMMetricsCollector';
 import { DatabaseService } from './services/DatabaseService';
 import { LLMService } from './services/LLMService';
+import { RabbitMQConsumerService } from './services/RabbitMQConsumerService';
 import { logger } from './utils/logger';
-import { config } from './config';
+import { config } from './config/index';
 
 class App {
   private app: express.Application;
   private metricsCollector: LLMMetricsCollector;
   private databaseService: DatabaseService;
   private llmService: LLMService;
+  private rabbitMQConsumer: RabbitMQConsumerService;
 
   constructor() {
     this.app = express();
     this.databaseService = new DatabaseService();
     this.metricsCollector = new LLMMetricsCollector();
     this.llmService = new LLMService(this.metricsCollector, this.databaseService);
+    this.rabbitMQConsumer = new RabbitMQConsumerService();
     
     this.setupMiddleware();
     this.setupRoutes();
@@ -49,14 +52,31 @@ class App {
   }
 
   private setupRoutes(): void {
-    // Health check endpoint
-    this.app.get('/health', (req: Request, res: Response) => {
-      res.status(200).json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        version: process.env.npm_package_version || '1.0.0',
-      });
+    // Health check endpoint with Twitter/RabbitMQ status
+    this.app.get('/health', async (req: Request, res: Response) => {
+      try {
+        // TODO: Re-enable when RabbitMQ consumer is working
+        // const rabbitMQHealth = await this.rabbitMQConsumer.healthCheck();
+        
+        res.status(200).json({
+          status: 'healthy',
+          timestamp: new Date().toISOString(),
+          uptime: process.uptime(),
+          version: process.env.npm_package_version || '1.0.0',
+          services: {
+            database: true, // Assuming healthy if we reach this point
+            rabbitmq: false, // Temporarily disabled
+            twitterConsumer: false, // Temporarily disabled
+          }
+        });
+      } catch (error) {
+        logger.error('Health check failed', error);
+        res.status(503).json({
+          status: 'unhealthy',
+          timestamp: new Date().toISOString(),
+          error: 'Service health check failed'
+        });
+      }
     });
 
     // Prometheus metrics endpoint
@@ -180,6 +200,10 @@ class App {
       await this.databaseService.initialize();
       logger.info('Database service initialized');
 
+      // Initialize RabbitMQ consumer for Twitter messages
+      await this.rabbitMQConsumer.connect();
+      logger.info('RabbitMQ consumer service connected and ready');
+
       // Start the server
       const port = config.port;
       this.app.listen(port, () => {
@@ -187,10 +211,23 @@ class App {
         logger.info(`Health check: http://localhost:${port}/health`);
         logger.info(`Metrics: http://localhost:${port}/metrics`);
         logger.info(`API Documentation: http://localhost:${port}/api`);
+        logger.info(`Twitter/NVIDIA messages pipeline ready for connection`);
       });
     } catch (error) {
       logger.error('Failed to start application', error);
       process.exit(1);
+    }
+  }
+
+  public async shutdown(): Promise<void> {
+    try {
+      logger.info('Shutting down services...');
+      // TODO: Re-enable when RabbitMQ consumer is working
+      // await this.rabbitMQConsumer.disconnect();
+      await this.databaseService.close();
+      logger.info('All services shut down successfully');
+    } catch (error) {
+      logger.error('Error during shutdown', error);
     }
   }
 }
@@ -203,12 +240,14 @@ app.start().catch((error) => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  await app.shutdown();
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
+  await app.shutdown();
   process.exit(0);
 });

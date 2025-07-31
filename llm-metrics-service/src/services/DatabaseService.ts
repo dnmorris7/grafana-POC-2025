@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { config } from '../config';
+import { config } from '../config/index';
 import { logger } from '../utils/logger';
 import { LLMMetrics } from '../metrics/LLMMetricsCollector';
 
@@ -52,6 +52,17 @@ export class DatabaseService {
       logger.info('Database connection established successfully');
     } catch (error) {
       logger.error('Failed to connect to database', error);
+      throw error;
+    }
+  }
+
+  // Add the missing executeQuery method
+  public async executeQuery(query: string, values?: any[]): Promise<any> {
+    try {
+      const result = await this.pool.query(query, values);
+      return result;
+    } catch (error) {
+      logger.error('Database query failed', { query, values, error });
       throw error;
     }
   }
