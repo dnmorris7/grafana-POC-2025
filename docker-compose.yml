@@ -112,9 +112,6 @@ services:
       TIMESCALE_USER: prometheus
       TIMESCALE_PASSWORD: prometheus_password
       OPENAI_API_KEY: ${OPENAI_API_KEY:-demo_key}
-    volumes:
-      - ./llm-metrics-service:/app
-      - /app/node_modules
     networks:
       - metrics-network
     depends_on:
