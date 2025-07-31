@@ -79,6 +79,7 @@ class RabbitMQDemo {
       await this.channel.assertExchange('orders.exchange', 'direct', { durable: true });
       await this.channel.assertExchange('notifications.exchange', 'fanout', { durable: true });
       await this.channel.assertExchange('analytics.exchange', 'topic', { durable: true });
+      await this.channel.assertExchange('twitter.exchange', 'topic', { durable: true });
 
       // Declare queues
       await this.channel.assertQueue('orders.processing', { durable: true });
@@ -87,6 +88,9 @@ class RabbitMQDemo {
       await this.channel.assertQueue('notifications.sms', { durable: true });
       await this.channel.assertQueue('analytics.user-behavior', { durable: true });
       await this.channel.assertQueue('analytics.system-metrics', { durable: true });
+      await this.channel.assertQueue('twitter.nvidia', { durable: true });
+      await this.channel.assertQueue('twitter.mentions', { durable: true });
+      await this.channel.assertQueue('twitter.trends', { durable: true });
 
       // Bind queues to exchanges
       await this.channel.bindQueue('orders.processing', 'orders.exchange', 'new');
@@ -95,6 +99,9 @@ class RabbitMQDemo {
       await this.channel.bindQueue('notifications.sms', 'notifications.exchange', '');
       await this.channel.bindQueue('analytics.user-behavior', 'analytics.exchange', 'user.*');
       await this.channel.bindQueue('analytics.system-metrics', 'analytics.exchange', 'system.*');
+      await this.channel.bindQueue('twitter.nvidia', 'twitter.exchange', 'twitter.NVIDIA');
+      await this.channel.bindQueue('twitter.mentions', 'twitter.exchange', 'twitter.mentions.*');
+      await this.channel.bindQueue('twitter.trends', 'twitter.exchange', 'twitter.trends.*');
 
       logger.info('RabbitMQ topology setup completed');
     } catch (error) {
@@ -122,6 +129,11 @@ class RabbitMQDemo {
     setInterval(() => {
       this.publishAnalyticsMessage();
     }, 1500);
+
+    // Twitter/NVIDIA producer
+    setInterval(() => {
+      this.publishTwitterMessage();
+    }, 5000);
 
     logger.info('Started message producers');
   }
@@ -177,6 +189,28 @@ class RabbitMQDemo {
       }
     });
 
+    // Twitter consumers
+    await this.channel.consume('twitter.nvidia', (msg: amqplib.ConsumeMessage | null) => {
+      if (msg) {
+        logger.info(`Processing NVIDIA Twitter message: ${msg.content.toString()}`);
+        this.channel?.ack(msg);
+      }
+    });
+
+    await this.channel.consume('twitter.mentions', (msg: amqplib.ConsumeMessage | null) => {
+      if (msg) {
+        logger.info(`Processing Twitter mentions: ${msg.content.toString()}`);
+        this.channel?.ack(msg);
+      }
+    });
+
+    await this.channel.consume('twitter.trends', (msg: amqplib.ConsumeMessage | null) => {
+      if (msg) {
+        logger.info(`Processing Twitter trends: ${msg.content.toString()}`);
+        this.channel?.ack(msg);
+      }
+    });
+
     logger.info('Started message consumers');
   }
 
@@ -226,6 +260,136 @@ class RabbitMQDemo {
 
     this.channel.publish('analytics.exchange', eventType, Buffer.from(JSON.stringify(event)));
     logger.debug(`Published analytics event: ${eventType}`);
+  }
+
+  private publishTwitterMessage(): void {
+    if (!this.channel) return;
+
+    // Check if we have Twitter API keys
+    if (!this.twitterConfig.apiKey || !this.twitterConfig.apiSecret) {
+      logger.warn('Twitter API keys not configured, generating simulated messages');
+    }
+
+    // Generate different types of NVIDIA-related Twitter messages
+    const messageTypes = ['tweet', 'mention', 'trend'];
+    const messageType = messageTypes[Math.floor(Math.random() * messageTypes.length)];
+
+    let routingKey: string;
+    let message: any;
+
+    switch (messageType) {
+      case 'tweet':
+        routingKey = 'twitter.NVIDIA';
+        message = this.generateNVIDIATweet();
+        break;
+      case 'mention':
+        routingKey = 'twitter.mentions.NVIDIA';
+        message = this.generateNVIDIAMention();
+        break;
+      case 'trend':
+        routingKey = 'twitter.trends.NVIDIA';
+        message = this.generateNVIDIATrend();
+        break;
+      default:
+        return;
+    }
+
+    this.channel.publish('twitter.exchange', routingKey, Buffer.from(JSON.stringify(message)));
+    logger.info(`Published Twitter message: ${routingKey}`, { messageId: message.id });
+  }
+
+  private generateNVIDIATweet(): any {
+    const tweets = [
+      "Breaking: NVIDIA announces new AI chip architecture with 50% performance improvement! #NVIDIA #AI #Tech",
+      "NVIDIA's latest GPU delivers unprecedented gaming performance. Gamers rejoice! #NVIDIA #Gaming #GPU",
+      "NVIDIA stock hits new all-time high as AI demand surges #NVIDIA #Stocks #AI",
+      "NVIDIA partners with major cloud providers for next-gen AI infrastructure #NVIDIA #Cloud #AI",
+      "New NVIDIA developer tools making AI more accessible to everyone #NVIDIA #Developer #AI"
+    ];
+
+    return {
+      id: Math.floor(Math.random() * 1000000),
+      type: 'tweet',
+      topic: 'NVIDIA',
+      text: tweets[Math.floor(Math.random() * tweets.length)],
+      author: {
+        username: 'nvidia_official',
+        followers: 2500000 + Math.floor(Math.random() * 100000),
+      },
+      engagement: {
+        likes: Math.floor(Math.random() * 10000),
+        retweets: Math.floor(Math.random() * 5000),
+        replies: Math.floor(Math.random() * 1000),
+      },
+      timestamp: new Date().toISOString(),
+      sentiment: Math.random() > 0.3 ? 'positive' : 'neutral',
+      metadata: {
+        hasTwitterKeys: !!(this.twitterConfig.apiKey && this.twitterConfig.apiSecret),
+        source: 'rabbitmq-demo'
+      }
+    };
+  }
+
+  private generateNVIDIAMention(): any {
+    const mentions = [
+      "Just upgraded to @NVIDIA RTX 4090, the performance is incredible! #NVIDIA",
+      "Thanks @NVIDIA for the amazing developer support at the AI conference! #AI #NVIDIA",
+      "@NVIDIA's CUDA toolkit just saved me hours of development time! #CUDA #NVIDIA",
+      "Can't wait for @NVIDIA's next announcement at GTC! #GTC #NVIDIA",
+      "@NVIDIA leading the AI revolution, one GPU at a time! #AI #NVIDIA"
+    ];
+
+    return {
+      id: Math.floor(Math.random() * 1000000),
+      type: 'mention',
+      topic: 'NVIDIA',
+      text: mentions[Math.floor(Math.random() * mentions.length)],
+      author: {
+        username: `user_${Math.floor(Math.random() * 10000)}`,
+        followers: Math.floor(Math.random() * 50000),
+      },
+      mentionedUser: 'NVIDIA',
+      engagement: {
+        likes: Math.floor(Math.random() * 1000),
+        retweets: Math.floor(Math.random() * 500),
+        replies: Math.floor(Math.random() * 100),
+      },
+      timestamp: new Date().toISOString(),
+      sentiment: Math.random() > 0.2 ? 'positive' : Math.random() > 0.5 ? 'neutral' : 'negative',
+      metadata: {
+        hasTwitterKeys: !!(this.twitterConfig.apiKey && this.twitterConfig.apiSecret),
+        source: 'rabbitmq-demo'
+      }
+    };
+  }
+
+  private generateNVIDIATrend(): any {
+    const trends = [
+      '#NVIDIA',
+      '#NVIDIAEarnings',
+      '#NVIDIAAI',
+      '#RTX4090',
+      '#NVIDIAGPU',
+      '#NVIDIADeveloper',
+      '#CUDAI',
+      '#NVIDIAStock'
+    ];
+
+    return {
+      id: Math.floor(Math.random() * 1000000),
+      type: 'trend',
+      topic: 'NVIDIA',
+      hashtag: trends[Math.floor(Math.random() * trends.length)],
+      tweetVolume: Math.floor(Math.random() * 100000) + 10000,
+      rank: Math.floor(Math.random() * 50) + 1,
+      location: 'Worldwide',
+      timestamp: new Date().toISOString(),
+      relatedTopics: ['AI', 'GPU', 'Gaming', 'Technology', 'Stocks'],
+      metadata: {
+        hasTwitterKeys: !!(this.twitterConfig.apiKey && this.twitterConfig.apiSecret),
+        source: 'rabbitmq-demo'
+      }
+    };
   }
 
   async close(): Promise<void> {
