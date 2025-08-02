@@ -26,6 +26,6 @@ scrape_configs:
   # LLM metrics service
   - job_name: 'llm-metrics'
     static_configs:
-      - targets: ['llm-metrics-service:8080']
+      - targets: ['llm-metrics-service:8090']
     scrape_interval: 30s
     metrics_path: /metrics

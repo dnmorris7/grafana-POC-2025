@@ -1,0 +1,340 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "LLM Performance Metrics",
+    "tags": ["llm", "performance", "metrics", "ai"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "5s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Total LLM Requests",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "rawSql": "SELECT COUNT(*) as total_requests FROM metrics.llm_metrics WHERE $__timeFilter(time)",
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "timescaledb"
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "red",
+                  "value": 100
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Average Time to First Token",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        },
+        "targets": [
+          {
+            "rawSql": "SELECT AVG(time_to_first_token) as avg_ttft FROM metrics.llm_metrics WHERE status = 'success' AND $__timeFilter(time)",
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "timescaledb"
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 0.5
+                },
+                {
+                  "color": "red",
+                  "value": 1.0
+                }
+              ]
+            },
+            "unit": "s"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Success Rate",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "rawSql": "SELECT (COUNT(CASE WHEN status = 'success' THEN 1 END)::float / COUNT(*)::float) * 100 as success_rate FROM metrics.llm_metrics WHERE $__timeFilter(time)",
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "timescaledb"
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 90
+                },
+                {
+                  "color": "green",
+                  "value": 95
+                }
+              ]
+            },
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Total Cost (USD)",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        },
+        "targets": [
+          {
+            "rawSql": "SELECT SUM(cost_usd) as total_cost FROM metrics.llm_metrics WHERE status = 'success' AND $__timeFilter(time)",
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "timescaledb"
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 10
+                }
+              ]
+            },
+            "unit": "currencyUSD"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Response Time Over Time",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 4
+        },
+        "targets": [
+          {
+            "rawSql": "SELECT time_bucket('1 minute', time) as time, AVG(time_to_first_token) as avg_ttft, AVG(total_duration) as avg_total_duration FROM metrics.llm_metrics WHERE status = 'success' AND $__timeFilter(time) GROUP BY time_bucket('1 minute', time) ORDER BY time",
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "timescaledb"
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "s"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Tokens per Second",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 4
+        },
+        "targets": [
+          {
+            "rawSql": "SELECT time_bucket('1 minute', time) as time, AVG(tokens_per_second) as avg_tps FROM metrics.llm_metrics WHERE status = 'success' AND $__timeFilter(time) GROUP BY time_bucket('1 minute', time) ORDER BY time",
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "timescaledb"
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "ops"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Cost per Hour",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "targets": [
+          {
+            "rawSql": "SELECT time_bucket('1 hour', time) as time, SUM(cost_usd) as hourly_cost FROM metrics.llm_metrics WHERE status = 'success' AND $__timeFilter(time) GROUP BY time_bucket('1 hour', time) ORDER BY time",
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "timescaledb"
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "currencyUSD"
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Model Usage Distribution",
+        "type": "piechart",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        },
+        "targets": [
+          {
+            "rawSql": "SELECT model, COUNT(*) as request_count FROM metrics.llm_metrics WHERE status = 'success' AND $__timeFilter(time) GROUP BY model ORDER BY request_count DESC",
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "timescaledb"
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Recent LLM Requests",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 20
+        },
+        "targets": [
+          {
+            "rawSql": "SELECT time, request_id, model, user_id, prompt_tokens, completion_tokens, time_to_first_token, tokens_per_second, cost_usd, status FROM metrics.llm_metrics WHERE $__timeFilter(time) ORDER BY time DESC LIMIT 20",
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "timescaledb"
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

@@ -257,4 +257,53 @@ export class LLMService {
     
     return inputCost + outputCost;
   }
+
+  // Get metrics summary for dashboard
+  public async getMetricsSummary(timeRange: string = '1h', model?: string) {
+    try {
+      return await this.databaseService.getLLMMetricsSummary(timeRange, model);
+    } catch (error) {
+      logger.error('Failed to get metrics summary', error);
+      throw error;
+    }
+  }
+
+  // Get cost breakdown for dashboard
+  public async getCostBreakdown(timeRange: string = '24h', groupBy: string = 'hour') {
+    try {
+      return await this.databaseService.getLLMCostBreakdown(timeRange, groupBy);
+    } catch (error) {
+      logger.error('Failed to get cost breakdown', error);
+      throw error;
+    }
+  }
+
+  // Health check for LLM service
+  public async healthCheck() {
+    try {
+      // Check if we can connect to database
+      const dbStatus = await this.databaseService.healthCheck();
+      
+      // Basic configuration check
+      const configStatus = {
+        hasApiKey: !!config.openai?.apiKey && config.openai.apiKey !== 'demo_key',
+        modelsAvailable: Object.keys(MODEL_PRICING).length > 0
+      };
+
+      return {
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        database: dbStatus,
+        configuration: configStatus,
+        models: Object.keys(MODEL_PRICING)
+      };
+    } catch (error) {
+      logger.error('LLM service health check failed', error);
+      return {
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
 }

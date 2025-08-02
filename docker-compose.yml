@@ -102,10 +102,10 @@ services:
       dockerfile: Dockerfile
     container_name: llm-metrics-service
     ports:
-      - "8080:8080"
+      - "8090:8090"
     environment:
       NODE_ENV: production
-      PROMETHEUS_PORT: 8080
+      PROMETHEUS_PORT: 8090
       TIMESCALE_HOST: timescaledb
       TIMESCALE_PORT: 5432
       TIMESCALE_DB: metrics

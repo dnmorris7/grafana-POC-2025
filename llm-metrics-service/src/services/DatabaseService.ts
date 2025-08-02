@@ -196,6 +196,37 @@ export class DatabaseService {
     return timeMap[timeRange] || '1 hour';
   }
 
+  // Health check for database service
+  public async healthCheck(): Promise<{ status: string; timestamp: string; details?: any }> {
+    try {
+      const client = await this.pool.connect();
+      const start = Date.now();
+      await client.query('SELECT 1');
+      const responseTime = Date.now() - start;
+      client.release();
+
+      return {
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        details: {
+          responseTime: `${responseTime}ms`,
+          activeConnections: this.pool.totalCount,
+          idleConnections: this.pool.idleCount,
+          waitingClients: this.pool.waitingCount
+        }
+      };
+    } catch (error) {
+      logger.error('Database health check failed', error);
+      return {
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        details: {
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      };
+    }
+  }
+
   public async close(): Promise<void> {
     await this.pool.end();
     logger.info('Database pool closed');
