@@ -122,6 +122,30 @@ rabbitmq-exporter   Up X minutes (healthy) 0.0.0.0:9419->9419/tcp
 
 ### **Step 4: Add Sample Data**
 
+#### **Quick LLM Data Generation (Recommended)**
+Use the provided batch scripts for easy LLM data generation:
+
+**Windows Batch Script:**
+```bash
+# Run the interactive batch script
+.\generate-llm-data.bat
+```
+
+**PowerShell Script:**
+```powershell
+# Run the PowerShell script
+.\generate-llm-data.ps1
+```
+
+These scripts will:
+- ✅ Check if services are running
+- ✅ Test connectivity to LLM service
+- ✅ Generate customizable amount of sample data
+- ✅ Verify data was created successfully
+- ✅ Show summary of generated metrics
+- ✅ Provide next steps and useful commands
+
+#### **Twitter Sample Data**
 Run this command to insert sample Twitter data:
 ```bash
 docker exec -it timescaledb psql -U prometheus -d metrics -c "
@@ -220,6 +244,9 @@ docker-compose restart grafana
 ```
 grafana-POC-2025/
 ├── docker-compose.yml              # Main orchestration
+├── start-poc.bat                   # Windows startup script
+├── generate-llm-data.bat          # LLM data generation (Batch)
+├── generate-llm-data.ps1          # LLM data generation (PowerShell)
 ├── twitter-nvidia-dashboard.json   # Grafana dashboard
 ├── setup-grafana.ps1              # Automated setup script
 ├── grafana/
@@ -262,6 +289,23 @@ docker-compose up -d --scale rabbitmq-demo=3
 
 # Backup TimescaleDB data
 docker exec timescaledb pg_dump -U prometheus metrics > backup.sql
+
+# Generate LLM sample data (Windows)
+.\generate-llm-data.bat
+
+# Generate LLM sample data (PowerShell)
+.\generate-llm-data.ps1
+
+# Manual LLM data generation
+curl -X POST http://localhost:8090/api/demo/generate-metrics \
+  -H "Content-Type: application/json" \
+  -d '{"count": 50}'
+
+# Check LLM service health
+curl http://localhost:8090/health
+
+# View LLM metrics summary
+curl http://localhost:8090/api/metrics/llm/summary?timeRange=1h
 ```
 
 ## 📝 **Next Steps**

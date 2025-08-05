@@ -90,7 +90,7 @@
       },
       "targets": [
         {
-          "expr": "llm_time_to_first_token_seconds",
+          "expr": "rate(llm_time_to_first_token_seconds_sum[5m]) / rate(llm_time_to_first_token_seconds_count[5m])",
           "interval": "",
           "legendFormat": "TTFT - {{model}}",
           "refId": "A"
@@ -171,7 +171,7 @@
       },
       "targets": [
         {
-          "expr": "llm_tokens_per_second",
+          "expr": "rate(llm_tokens_per_second_sum[5m]) / rate(llm_tokens_per_second_count[5m])",
           "interval": "",
           "legendFormat": "TPS - {{model}}",
           "refId": "A"
@@ -293,9 +293,9 @@
       },
       "targets": [
         {
-          "expr": "llm_total_tokens",
+          "expr": "llm_total_tokens_sum / llm_total_tokens_count",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "Avg Tokens - {{model}}",
           "refId": "A"
         }
       ],
@@ -354,9 +354,9 @@
       },
       "targets": [
         {
-          "expr": "rate(llm_requests_total{status=\"error\"}[5m]) / rate(llm_requests_total[5m])",
+          "expr": "(rate(llm_requests_total{status=\"error\"}[5m]) or vector(0)) / rate(llm_requests_total[5m])",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "Error Rate",
           "refId": "A"
         }
       ],
@@ -425,7 +425,7 @@
       "type": "stat"
     },
     {
-      "datasource": "TimescaleDB",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -496,32 +496,10 @@
       },
       "targets": [
         {
-          "format": "time_series",
-          "group": [],
-          "metricColumn": "none",
-          "rawQuery": true,
-          "rawSql": "SELECT\n  bucket AS \"time\",\n  model,\n  total_cost\nFROM metrics.llm_metrics_hourly\nWHERE\n  $__timeFilter(bucket)\nORDER BY bucket",
-          "refId": "A",
-          "select": [
-            [
-              {
-                "params": [
-                  "total_cost"
-                ],
-                "type": "column"
-              }
-            ]
-          ],
-          "table": "llm_metrics_hourly",
-          "timeColumn": "bucket",
-          "timeColumnType": "timestamptz",
-          "where": [
-            {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
-            }
-          ]
+          "expr": "rate(llm_cost_usd_total[1h]) * 3600",
+          "interval": "",
+          "legendFormat": "Cost - {{model}}",
+          "refId": "A"
         }
       ],
       "title": "Hourly LLM Costs by Model",

@@ -163,8 +163,8 @@ class App {
     this.app.post('/api/demo/generate-metrics', async (req: Request, res: Response) => {
       try {
         logger.info('Demo metrics generation accessed');
-        const { count = 10 } = req.body;
-        const results = await this.generateDemoMetrics(count);
+        const { count = 10, includeErrors = false } = req.body;
+        const results = await this.generateDemoMetrics(count, includeErrors);
         res.json({
           message: `Generated ${results.length} demo metrics`,
           results: results.slice(0, 5), // Return first 5 for preview
@@ -193,7 +193,7 @@ class App {
     });
   }
 
-  private async generateDemoMetrics(count: number): Promise<any[]> {
+  private async generateDemoMetrics(count: number, includeErrors: boolean = false): Promise<any[]> {
     const models = ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo'];
     const samplePrompts = [
       'Explain quantum computing',
@@ -210,18 +210,58 @@ class App {
       const prompt = samplePrompts[Math.floor(Math.random() * samplePrompts.length)];
       const userId = `demo-user-${Math.floor(Math.random() * 5) + 1}`;
 
-      try {
-        const result = await this.llmService.generateCompletion(prompt, model, userId);
-        results.push(result);
+      // Simulate errors for 50% of requests when includeErrors is true (increased for testing)
+      const shouldSimulateError = includeErrors && Math.random() < 0.5;
+
+      if (shouldSimulateError) {
+        // Generate error metrics manually
+        const requestId = require('uuid').v4();
+        const errorMetrics = {
+          requestId,
+          model,
+          promptTokens: this.estimateTokens(prompt),
+          completionTokens: 0,
+          totalTokens: this.estimateTokens(prompt),
+          timeToFirstToken: 0,
+          tokensPerSecond: 0,
+          totalDuration: 2.5 + Math.random() * 2, // 2.5-4.5 seconds for timeout
+          costUsd: 0,
+          status: 'error' as const,
+          errorMessage: 'API rate limit exceeded',
+          userId,
+          endpoint: '/api/llm/chat',
+        };
+
+        // Record the error metrics
+        await this.databaseService.saveLLMMetrics(errorMetrics);
+        this.metricsCollector.recordMetrics(errorMetrics);
         
-        // Add small delay to simulate realistic usage
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (error) {
-        logger.error(`Error generating demo metric ${i}`, error);
+        results.push({
+          requestId,
+          status: 'error',
+          errorMessage: 'API rate limit exceeded',
+          model,
+          userId
+        });
+      } else {
+        try {
+          const result = await this.llmService.generateCompletion(prompt, model, userId);
+          results.push(result);
+        } catch (error) {
+          logger.error(`Error generating demo metric ${i}`, error);
+        }
       }
+      
+      // Add small delay to simulate realistic usage
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     return results;
+  }
+
+  private estimateTokens(text: string): number {
+    // Rough estimation: ~4 characters per token for English text
+    return Math.ceil(text.length / 4);
   }
 
   public async start(): Promise<void> {
