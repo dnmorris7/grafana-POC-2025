@@ -210,7 +210,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 6,
         "w": 6,
         "x": 0,
         "y": 8
@@ -219,7 +219,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
           "values": false,
@@ -228,13 +228,17 @@
           ],
           "fields": ""
         },
-        "textMode": "auto"
+        "textMode": "value_and_name",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 24
+        }
       },
       "targets": [
         {
           "expr": "rate(llm_cost_usd_total[1h]) * 3600",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{model}} Cost/Hr",
           "refId": "A"
         }
       ],
@@ -271,7 +275,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 6,
         "w": 6,
         "x": 6,
         "y": 8
@@ -280,7 +284,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
           "values": false,
@@ -289,7 +293,11 @@
           ],
           "fields": ""
         },
-        "textMode": "auto"
+        "textMode": "value_and_name",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 24
+        }
       },
       "targets": [
         {
@@ -332,7 +340,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 6,
         "w": 6,
         "x": 12,
         "y": 8
@@ -341,7 +349,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
           "values": false,
@@ -350,7 +358,11 @@
           ],
           "fields": ""
         },
-        "textMode": "auto"
+        "textMode": "value_and_name",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 24
+        }
       },
       "targets": [
         {
@@ -393,7 +405,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 6,
         "w": 6,
         "x": 18,
         "y": 8
@@ -402,7 +414,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
           "values": false,
@@ -411,13 +423,17 @@
           ],
           "fields": ""
         },
-        "textMode": "auto"
+        "textMode": "value_and_name",
+        "text": {
+          "titleSize": 14,
+          "valueSize": 20
+        }
       },
       "targets": [
         {
           "expr": "rate(llm_requests_total[5m])",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{model}}",
           "refId": "A"
         }
       ],
@@ -481,7 +497,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 12
+        "y": 14
       },
       "id": 7,
       "options": {
