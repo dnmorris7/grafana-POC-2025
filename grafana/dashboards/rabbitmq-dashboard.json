@@ -230,13 +230,17 @@
           ],
           "fields": ""
         },
-        "textMode": "auto"
+        "textMode": "value",
+        "text": {
+          "titleSize": 14,
+          "valueSize": 20
+        }
       },
       "targets": [
         {
           "expr": "rabbitmq_connections",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "Connections",
           "refId": "A"
         }
       ],
@@ -291,13 +295,17 @@
           ],
           "fields": ""
         },
-        "textMode": "auto"
+        "textMode": "value",
+        "text": {
+          "titleSize": 14,
+          "valueSize": 20
+        }
       },
       "targets": [
         {
           "expr": "rabbitmq_queues",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "Queues",
           "refId": "A"
         }
       ],
@@ -352,13 +360,13 @@
           ],
           "fields": ""
         },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "targets": [
         {
-          "expr": "rabbitmq_process_resident_memory_bytes",
+          "expr": "rabbitmq_node_mem_used",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "Memory",
           "refId": "A"
         }
       ],
@@ -425,13 +433,13 @@
           ],
           "fields": ""
         },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "targets": [
         {
           "expr": "up{job=\"rabbitmq\"}",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "Status",
           "refId": "A"
         }
       ],

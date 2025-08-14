@@ -32,9 +32,10 @@ export class DatabaseService {
       database: config.database.database,
       user: config.database.user,
       password: config.database.password,
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      min: parseInt(process.env.DB_POOL_MIN || '2'),
+      max: parseInt(process.env.DB_POOL_MAX || '10'),
+      idleTimeoutMillis: parseInt(process.env.DB_POOL_IDLE_TIMEOUT || '30000'),
+      connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '5000'),
     });
 
     // Handle pool errors
@@ -97,6 +98,46 @@ export class DatabaseService {
       logger.debug('LLM metrics saved to database', { requestId: metrics.requestId });
     } catch (error) {
       logger.error('Failed to save LLM metrics to database', error);
+      throw error;
+    }
+  }
+
+  public async saveLLMMetricsBatch(metricsBatch: LLMMetrics[]): Promise<void> {
+    if (metricsBatch.length === 0) return;
+
+    const query = `
+      INSERT INTO metrics.llm_metrics (
+        request_id, model, prompt_tokens, completion_tokens, total_tokens,
+        time_to_first_token, tokens_per_second, total_duration, cost_usd,
+        status, error_message, user_id, endpoint
+      ) VALUES ${metricsBatch.map((_, i) => 
+        `($${i * 13 + 1}, $${i * 13 + 2}, $${i * 13 + 3}, $${i * 13 + 4}, $${i * 13 + 5}, ` +
+        `$${i * 13 + 6}, $${i * 13 + 7}, $${i * 13 + 8}, $${i * 13 + 9}, $${i * 13 + 10}, ` +
+        `$${i * 13 + 11}, $${i * 13 + 12}, $${i * 13 + 13})`
+      ).join(', ')}
+    `;
+
+    const values = metricsBatch.flatMap(metrics => [
+      metrics.requestId,
+      metrics.model,
+      metrics.promptTokens,
+      metrics.completionTokens,
+      metrics.totalTokens,
+      metrics.timeToFirstToken,
+      metrics.tokensPerSecond,
+      metrics.totalDuration,
+      metrics.costUsd,
+      metrics.status,
+      metrics.errorMessage || null,
+      metrics.userId,
+      metrics.endpoint,
+    ]);
+
+    try {
+      await this.pool.query(query, values);
+      logger.debug('Batch LLM metrics saved to database', { batchSize: metricsBatch.length });
+    } catch (error) {
+      logger.error('Failed to save batch LLM metrics to database', error);
       throw error;
     }
   }
@@ -194,37 +235,6 @@ export class DatabaseService {
     };
 
     return timeMap[timeRange] || '1 hour';
-  }
-
-  // Health check for database service
-  public async healthCheck(): Promise<{ status: string; timestamp: string; details?: any }> {
-    try {
-      const client = await this.pool.connect();
-      const start = Date.now();
-      await client.query('SELECT 1');
-      const responseTime = Date.now() - start;
-      client.release();
-
-      return {
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        details: {
-          responseTime: `${responseTime}ms`,
-          activeConnections: this.pool.totalCount,
-          idleConnections: this.pool.idleCount,
-          waitingClients: this.pool.waitingCount
-        }
-      };
-    } catch (error) {
-      logger.error('Database health check failed', error);
-      return {
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        details: {
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      };
-    }
   }
 
   public async close(): Promise<void> {

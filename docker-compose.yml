@@ -44,12 +44,17 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
+   
     ports:
       - "3090:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: false
       GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+      TZ: America/New_York
+      # Caching optimizations
+      GF_CACHE_ENABLED: true
+      GF_CACHE_TTL: 300
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
@@ -59,6 +64,29 @@ services:
     depends_on:
       - prometheus
       - timescaledb
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis for async processing and caching
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - metrics-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # RabbitMQ with management plugin
   rabbitmq:
@@ -112,11 +140,34 @@ services:
       TIMESCALE_USER: prometheus
       TIMESCALE_PASSWORD: prometheus_password
       OPENAI_API_KEY: ${OPENAI_API_KEY:-demo_key}
+      # Connection pooling configuration
+      DB_POOL_MIN: 2
+      DB_POOL_MAX: 10
+      DB_POOL_IDLE_TIMEOUT: 30000
+      DB_CONNECTION_TIMEOUT: 5000
+      # Redis configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - metrics-network
     depends_on:
       - timescaledb
       - prometheus
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
   # Sample RabbitMQ Producer/Consumer for demo
   rabbitmq-demo:
@@ -142,6 +193,7 @@ volumes:
   grafana_data:
   timescaledb_data:
   rabbitmq_data:
+  redis_data:
 
 networks:
   metrics-network:
